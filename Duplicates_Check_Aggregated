@@ -1,0 +1,50 @@
+-- This script takes the unique columns of the table as an parameter for determining duplicates.
+two scenarios for checking duplicates are being taken into consideration:
+1.  unique columns repeating with numerical columns having same values (Exactly similar rows)
+2.  unique columns repeating with numerical columns having different values (Numerical values difference)
+
+
+****This is the query for second scenario***********************
+SELECT
+	tab1.YEAR ,
+	tab1.month,
+	(affected_count*100)/ total_count AS "affected%"
+FROM
+	(
+	SELECT
+		COUNT(DISTINCT aeic) AS affected_count,
+		YEAR(ROW_TIMESTAMP) AS YEAR,
+		MONTH(ROW_TIMESTAMP) AS MONTH
+	FROM
+		(
+		SELECT
+			DISTINCT ROW_TIMESTAMP ,
+			aeic
+		FROM
+			SVC_MKTCOND.PM_COMBINED_OP_HOURLY_MAT
+		GROUP BY
+			row_timestamp,
+			aeic
+		HAVING
+			COUNT(DISTINCT IFNULL(POWER_GEN_MW_EST, 0)) > 1
+			OR COUNT(DISTINCT IFNULL(POWER_GEN_IGVP_EST, 0))>1
+			OR COUNT(DISTINCT IFNULL(POWER_GEN_MW_EST, 0)) > 1
+			OR COUNT(DISTINCT IFNULL(POWER_GEN_INSTCAP_EST, 0))>1
+			OR COUNT(DISTINCT IFNULL(POWER_PRICES_DAYAHEAD_EST, 0))>1
+			OR COUNT(DISTINCT IFNULL(POWER_GEN_REL_MW_100_EST, 0))>1
+			OR COUNT(DISTINCT IFNULL(CERT_CO2_PRICE_EST, 0))>1)
+	GROUP BY
+		YEAR(ROW_TIMESTAMP),
+		MONTH(ROW_TIMESTAMP))tab1
+INNER JOIN (
+	SELECT
+		YEAR(ROW_TIMESTAMP) AS YEAR,
+		MONTH(ROW_TIMESTAMP) AS MONTH,
+		COUNT(DISTINCT aeic) AS total_count
+	FROM
+		SVC_MKTCOND.PM_COMBINED_OP_HOURLY_MAT
+	GROUP BY
+		YEAR(ROW_TIMESTAMP),
+		MONTH(ROW_TIMESTAMP)) tab2 ON
+	tab1.YEAR = tab2.YEAR
+	AND tab1.MONTH = tab2.month;
